@@ -1,4 +1,2 @@
 [myserver]
-152.7.178.130 ansible_user=ybaddi
-
-
+<ip_address> ansible_user=ybaddi

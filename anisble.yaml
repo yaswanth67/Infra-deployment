@@ -10,6 +10,7 @@
   vars:
     app_dir: /home/ybaddi/app
     proj_dir: /project
+    monitoring_dir: /monitoring
     db_host: "{{ lookup('env', 'db_host') | default('127.0.0.1', true) }}"
     mysql_db: project
     mysql_table: feature_flag
@@ -21,7 +22,7 @@
     - name: Update and install packages
       apt:
         name:
-#          - apt-transport-https
+          #          - apt-transport-https
           - ca-certificates
           - curl
           - gnupg
@@ -34,12 +35,12 @@
           - python3-pymysql
         state: present
         update_cache: yes
-        
+
     - name: Add Docker’s official GPG key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
-        
+
     - name: Add Docker repository
       apt_repository:
         repo: >
@@ -67,27 +68,67 @@
         name: "{{ ansible_user }}"
         groups: docker
         append: yes
-        
+
+    - name: Install loki plugin for docker
+      shell: docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+
+    - name: Set Docker daemon
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "loki",
+            "log-opts": {
+              "loki-url": "http://localhost:3100/loki/api/v1/push",
+              "loki-batch-size": "400",
+            }
+          }
+
+    - name: Restart docker
+      service:
+        name: docker
+        state: restarted
+
+    - name: Copy monitoring folder
+      copy:
+        src: "./monitoring"
+        dest: "{{ monitoring }}"
+
+    - name: Copy monitoring docker-compose
+      copy:
+        src: "./monitor-docker-compose.yaml"
+        dest: "{{ monitoring }}/docker-compose.yaml"
+
+    - name: Build grafana and loki images image
+      shell: docker-compose build
+      args:
+        chdir: "{{ monitoring }}"
+
+    - name: Start grafana and loki containers
+      shell: docker-compose up -d
+      args:
+        chdir: "{{ monitoring }}"
+
     - name: Copy build file
       copy:
         src: "{{proj_dir}}/dist"
         dest: "{{ app_dir }}"
-        
+
     - name: Copy package-lock.json file
       copy:
         src: "{{proj_dir}}/package-lock.json"
         dest: "{{ app_dir }}"
-        
-        
+
     - name: Copy public file
       copy:
         src: "{{proj_dir}}/public"
         dest: "{{ app_dir }}"
-        
+
     - name: Copy docker-compose.yaml file
       copy:
         src: "{{proj_dir}}/docker-compose.yaml"
         dest: "{{ app_dir }}"
+
     - name: Copy docker file
       copy:
         src: "{{proj_dir}}/Dockerfile"
@@ -97,13 +138,12 @@
       shell: docker-compose build
       args:
         chdir: "{{ app_dir }}"
-        
+
     - name: start coffee app container
       shell: docker-compose up -d
       args:
         chdir: "{{ app_dir }}"
-        
-    
+
     - name: Allow  HTTP on port 80
       shell: "sudo iptables -I INPUT -p tcp --dport 80 -j ACCEPT"
 
@@ -122,10 +162,17 @@
                   proxy_set_header Host $host;
                   proxy_cache_bypass $http_upgrade;
               }
+              location /grafana {
+                  proxy_pass http://127.0.0.1:3200;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+              }
           }
 
     - name: Restart Nginx
       service:
         name: nginx
         state: restarted
-

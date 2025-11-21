@@ -1,5 +1,41 @@
+version: '3.8'
+
 services:
-  app:
-    build: ./coffee_app
-    ports:
-      - "3000:3000"
+  
+  coffee-app:
+    build:
+      context: ../Coffee-shop          
+      dockerfile: ./Dockerfile.coffee-app 
+    environment:
+      FEATURE_API_URL: http://feature-api:8080
+    depends_on:
+      - feature-api
+
+  # Feature API
+  feature-api:
+    build:
+      context: ../Feature-configuration
+      dockerfile: ./Dockerfile.feature-api
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      # These variables come from the .env file
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+      PORT: 8080
+
+  # containerized Database
+  db:
+    image: mysql:8.0
+    platform: linux/amd64
+    environment:
+      # These also come from the .env file
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - db-data:/var/lib/mysql
+
+volumes:
+  db-data:

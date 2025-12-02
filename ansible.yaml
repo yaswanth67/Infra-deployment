@@ -6,19 +6,14 @@
     - community.mysql
 
   vars:
-    proj_dir: /project
     app_dir: ~/deployment/coffeeApp
     loki_dir: ~/deployment/monitoring/loki
     grafana_dir: ~/deployment/monitoring/grafana
-    deployment: deployment
+    feature_conf_dir: ~/deployment/feature-configuration/
     nginx_path: ~/deployment/nginx
     monitoring_dir: ~/deployment/monitoring
-    db_host: "{{ lookup('env', 'db_host') | default('127.0.0.1', true) }}"
-    mysql_db: project
-    mysql_table: feature_flag
-    mysql_app_user: ybaddi
-    mysql_app_password: "Qwerty@1"
-    mysql_socket: /var/run/mysqld/mysqld.sock
+    mysql_dir: ~/deployment/mysql
+    mysql_root_password: "{{ lookup('env', 'DATABASE_PASSWORD') }}"
 
   tasks:
     - name: Copy deployment folder
@@ -118,6 +113,8 @@
         networks:
           - name: app-network
         restart_policy: always
+        env:
+          FEATURE_API_URL: "http://feature-configuration:8080"
         log_driver: "loki"
         log_options:
           loki-url: "http://localhost:3100/loki/api/v1/push"
@@ -145,6 +142,67 @@
         networks:
           - name: app-network
         restart_policy: always
+        log_driver: "loki"
+        log_options:
+          loki-url: "http://localhost:3100/loki/api/v1/push"
+          loki-batch-size: "400"
+
+    - name: Build feature-configuration docker image
+      community.docker.docker_image:
+        name: feature-configuration
+        build:
+          path: "{{ feature_conf_dir }}"
+        source: build
+        force_source: yes
+
+    - name: Remove existing feature-configuration container if present
+      community.docker.docker_container:
+        name: feature-configuration
+        state: absent
+        force_kill: yes
+
+    - name: Run feature-configuration Docker container
+      community.docker.docker_container:
+        name: feature-configuration
+        image: feature-configuration
+        state: started
+        networks:
+          - name: app-network
+        restart_policy: always
+        env:
+          DB_HOST: "mysql"
+          DB_USER: root
+          DB_PASSWORD: "{{ mysql_root_password }}"
+          DB_NAME: feature_db
+        log_driver: "loki"
+        log_options:
+          loki-url: "http://localhost:3100/loki/api/v1/push"
+          loki-batch-size: "400"
+
+    - name: Build mysql docker image
+      community.docker.docker_image:
+        name: mysql
+        build:
+          path: "{{ mysql_dir }}"
+        source: build
+        force_source: yes
+
+    - name: Remove existing mysql container if present
+      community.docker.docker_container:
+        name: mysql
+        state: absent
+        force_kill: yes
+
+    - name: Run mysql Docker container
+      community.docker.docker_container:
+        name: mysql
+        image: mysql
+        state: started
+        networks:
+          - name: app-network
+        restart_policy: always
+        env:
+          MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
         log_driver: "loki"
         log_options:
           loki-url: "http://localhost:3100/loki/api/v1/push"

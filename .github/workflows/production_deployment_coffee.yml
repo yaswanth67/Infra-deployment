@@ -12,14 +12,13 @@ permissions:
   contents: read
 
 jobs:
-  download-coffee-artifact:
+  deploy-coffee-app:
     runs-on: self-hosted
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           repository: TAYDevops/infra-deployment
-          ref: prod-deployment
           token: ${{ secrets.ORG_PAT }}
 
       - name: Download artifact from main repo
@@ -31,11 +30,12 @@ jobs:
           name: coffee-build
           path: ./deployment/coffeeApp
 
-      - name: List files
-        run: ls -la ${{ github.workspace }}
-
-      - name: Display coffee app files
-        run: ls -la ${{ github.workspace }}/deployment/coffeeApp
+      - name: Checkout feature-condiguration branch
+        uses: actions/checkout@v4
+        with:
+          repository: TAYDevops/Feature-configuration
+          path: ./deployment/feature-configuration/app
+          token: ${{ secrets.ORG_PAT }}
 
       - name: set ssh key
         run: |
@@ -51,6 +51,7 @@ jobs:
             -e ANSIBLE_HOST_KEY_CHECKING=False \
             -e PRODUCTION_IP="${{ secrets.PRODUCTION_IP }}" \
             -e PRODUCTION_USER="${{ secrets.PRODUCTION_USER }}" \
+            -e DATABASE_PASSWORD="${{ secrets.PRODUCTION_DATABASE_PASSWORD }}" \
             -v ./.ssh:/root/.ssh:ro \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \

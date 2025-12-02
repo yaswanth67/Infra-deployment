@@ -3,3 +3,6 @@ all:
     staging_server:
       ansible_host: "{{ lookup('env', 'STAGING_IP') }}"
       ansible_user: "{{ lookup('env', 'STAGING_USER') }}"
+    production_server:
+      ansible_host: "{{ lookup('env', 'PRODUCTION_IP') }}"
+      ansible_user: "{{ lookup('env', 'PRODUCTION_USER') }}"

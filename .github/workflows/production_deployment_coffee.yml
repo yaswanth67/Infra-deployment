@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: TAYDevops/infra-deployment
-          ref: infra-deployment
+          ref: prod-deployment
           token: ${{ secrets.ORG_PAT }}
 
       - name: Download artifact from main repo
@@ -40,7 +40,7 @@ jobs:
       - name: set ssh key
         run: |
           mkdir -p ${{ github.workspace }}/.ssh
-          echo "${{ secrets.STAGING_SECRET_KEY }}" > ${{ github.workspace }}/.ssh/id_rsa
+          echo "${{ secrets.PRODUCTION_SECRET_KEY }}" > ${{ github.workspace }}/.ssh/id_rsa
 
       - name: Build Ansible Docker Image
         run: docker build -t ansible-runner .
@@ -49,10 +49,10 @@ jobs:
         run: |
           docker run --rm --network host \
             -e ANSIBLE_HOST_KEY_CHECKING=False \
-            -e STAGING_IP="${{ secrets.STAGING_IP }}" \
-            -e STAGING_USER="${{ secrets.STAGING_USER }}" \
+            -e PRODUCTION_IP="${{ secrets.PRODUCTION_IP }}" \
+            -e PRODUCTION_USER="${{ secrets.PRODUCTION_USER }}" \
             -v ./.ssh:/root/.ssh:ro \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             ansible-runner \
-            ansible-playbook -i Hosts.yaml --limit staging_server ansible.yaml
+            ansible-playbook -i Hosts.yaml --limit production_server ansible.yaml

@@ -1,6 +1,6 @@
 ---
 - name: playbook
-  hosts: staging_server
+  hosts: all
 
   collections:
     - community.mysql

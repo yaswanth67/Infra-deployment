@@ -1,0 +1,58 @@
+name: Staging Deployment Coffee App
+
+on:
+  workflow_call:
+    inputs:
+      build_id:
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  download-coffee-artifact:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: TAYDevops/infra-deployment
+          ref: infra-deployment
+          token: ${{ secrets.ORG_PAT }}
+
+      - name: Download artifact from main repo
+        uses: actions/download-artifact@v3
+        with:
+          github-token: ${{ secrets.ORG_PAT }}
+          repository: TAYDevops/Coffee-shop
+          run-id: ${{ inputs.build_id }}
+          name: coffee-build
+          path: ./deployment/coffeeApp
+
+      - name: List files
+        run: ls -la ${{ github.workspace }}
+
+      - name: Display coffee app files
+        run: ls -la ${{ github.workspace }}/deployment/coffeeApp
+
+      - name: set ssh key
+        run: |
+          mkdir -p ${{ github.workspace }}/.ssh
+          echo "${{ secrets.STAGING_SECRET_KEY }}" > ${{ github.workspace }}/.ssh/id_rsa
+
+      - name: Build Ansible Docker Image
+        run: docker build -t ansible-runner .
+
+      - name: Run Ansible in Docker
+        run: |
+          docker run --rm --network host \
+            -e ANSIBLE_HOST_KEY_CHECKING=False \
+            -e STAGING_IP="${{ secrets.STAGING_IP }}" \
+            -e STAGING_USER="${{ secrets.STAGING_USER }}" \
+            -v ./.ssh:/root/.ssh:ro \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ansible-runner \
+            ansible-playbook -i Hosts.yaml ansible.yaml

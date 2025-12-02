@@ -1,2 +1,5 @@
-[myserver]
-<ip_address> ansible_user=ybaddi
+all:
+  hosts:
+    staging_server:
+      ansible_host: "{{ lookup('env', 'STAGING_IP') }}"
+      ansible_user: "{{ lookup('env', 'STAGING_USER') }}"

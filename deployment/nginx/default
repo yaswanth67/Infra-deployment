@@ -1,10 +1,16 @@
 
-server {
+http {
+  #Allows 10 requests per second per user.
+  limit_req_zone $binary_remote_addr zone=ddos_protection:10m rate=10r/s;
+
+  server {
     listen 80;
     resolver 127.0.0.11 valid=30s;
 
     # Coffee Shop App
     location /coffee-app/ {
+      limit_req zone=ddos_protection burst=20 nodelay;
+      
       proxy_pass http://coffee-app:3000/;
 
       proxy_http_version 1.1;
@@ -15,6 +21,8 @@ server {
     }
 
     location /grafana/ {
+      limit_req zone=ddos_protection burst=20 nodelay;
+
       proxy_pass http://grafana2:3000/;
 
       proxy_http_version 1.1;
@@ -35,6 +43,8 @@ server {
     }
 
     location / {
+      limit_req zone=ddos_protection burst=20 nodelay;
+
       proxy_pass http://coffee-app:3000/;
 
       proxy_http_version 1.1;
@@ -44,3 +54,4 @@ server {
       proxy_cache_bypass $http_upgrade;
     }
   }
+}

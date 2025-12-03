@@ -17,7 +17,7 @@ server {
     }
 
     location /grafana/ {
-      limit_req zone=ddos_protection burst=20 nodelay;
+      limit_req zone=ddos_protection burst=200 nodelay;
 
       proxy_pass http://grafana2:3000/;
 

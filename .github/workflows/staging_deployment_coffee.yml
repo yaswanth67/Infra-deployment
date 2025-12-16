@@ -8,19 +8,12 @@ on:
         type: string
 
 permissions:
-
   contents: read
 
 jobs:
   deploy-coffee-app:
     runs-on: self-hosted
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          repository: yaswanth67/infra-deployment
-          token: ${{ secrets.ORG_PAT }}
-
       - name: Download artifact from main repo
         uses: actions/download-artifact@v4
         with:
@@ -30,17 +23,18 @@ jobs:
           name: coffee-build
           path: ./deployment/coffeeApp
 
-      - name: Checkout feature-condiguration branch
+      - name: Checkout feature-configuration repo
         uses: actions/checkout@v4
         with:
           repository: yaswanth67/Feature-configuration
           path: ./deployment/feature-configuration/app
           token: ${{ secrets.ORG_PAT }}
 
-      - name: set ssh key
+      - name: Set SSH key
         run: |
-          mkdir -p ${{ github.workspace }}/.ssh
-          echo "${{ secrets.STAGING_SECRET_KEY }}" > ${{ github.workspace }}/.ssh/id_rsa
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SECRET_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
       - name: Build Ansible Docker Image
         run: docker build -t ansible-runner .
@@ -52,7 +46,7 @@ jobs:
             -e STAGING_IP="${{ secrets.STAGING_IP }}" \
             -e STAGING_USER="${{ secrets.STAGING_USER }}" \
             -e DATABASE_PASSWORD="${{ secrets.STAGING_DATABASE_PASSWORD }}" \
-            -v ./.ssh:/root/.ssh:ro \
+            -v ~/.ssh:/root/.ssh:ro \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             ansible-runner \

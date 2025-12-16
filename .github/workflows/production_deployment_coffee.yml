@@ -18,14 +18,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          repository: TAYDevops/infra-deployment
+          repository: yaswanth67/infra-deployment
           token: ${{ secrets.ORG_PAT }}
 
       - name: Download artifact from main repo
         uses: actions/download-artifact@v3
         with:
           github-token: ${{ secrets.ORG_PAT }}
-          repository: TAYDevops/Coffee-shop
+          repository: yaswanth67/Coffee-shop
           run-id: ${{ inputs.build_id }}
           name: coffee-build
           path: ./deployment/coffeeApp
@@ -33,7 +33,7 @@ jobs:
       - name: Checkout feature-condiguration branch
         uses: actions/checkout@v4
         with:
-          repository: TAYDevops/Feature-configuration
+          repository: yaswanth67/Feature-configuration
           path: ./deployment/feature-configuration/app
           token: ${{ secrets.ORG_PAT }}
 
